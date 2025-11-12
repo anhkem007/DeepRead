@@ -1,67 +1,29 @@
-import { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Platform } from 'react-native';
+import { useState, useMemo, useRef, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions, Modal, ScrollView, TextInput } from 'react-native';
+import { Reader, useReader, Annotation } from '@epubjs-react-native/core';
+import { useFileSystem } from '@epubjs-react-native/file-system';
 import Feather from 'react-native-vector-icons/Feather';
-import { FloatingToolbar } from './FloatingToolbar';
-import { AISummaryPopup } from './AISummaryPopup';
-import { AddNotePopup } from './AddNotePopup';
-import { BottomReaderToolbar } from './BottomReaderToolbar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface ReaderScreenProps {
   bookTitle: string;
   onBack: () => void;
   darkMode: boolean;
+  src?: string;
 }
 
-export function ReaderScreen({ bookTitle, onBack, darkMode }: ReaderScreenProps) {
-  const [selectedText, setSelectedText] = useState<string | null>(null);
-  const [showSummaryPopup, setShowSummaryPopup] = useState(false);
-  const [showNotePopup, setShowNotePopup] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
-  const [highlights, setHighlights] = useState<number[]>([]);
-  const [anchor, setAnchor] = useState<{ x: number; y: number } | undefined>(undefined);
-
-  const currentPage = 24;
-  const totalPages = 220;
-  const progress = (currentPage / totalPages) * 100;
-
-  const handleHighlight = () => {
-    setHighlights([...highlights, Date.now()]);
-    setSelectedText(null);
-  };
-
-  const handleAddNote = () => {
-    setSelectedText('Selected passage');
-    setShowNotePopup(true);
-  };
-
-  const handleSummarize = () => {
-    setSelectedText('Selected passage');
-    setShowSummaryPopup(true);
-  };
-
-  useEffect(() => {
-    if (Platform.OS !== 'web') return;
-    const onMouseUp = () => {
-      const sel = window.getSelection?.();
-      const text = sel?.toString().trim();
-      if (text) {
-        try {
-          const range = sel!.getRangeAt(0);
-          const rect = range.getBoundingClientRect();
-          setSelectedText(text);
-          setAnchor({ x: rect.left + rect.width / 2 + window.scrollX, y: rect.top + window.scrollY });
-        } catch {
-          setSelectedText(text);
-          setAnchor(undefined);
-        }
-      } else {
-        setSelectedText(null);
-        setAnchor(undefined);
-      }
-    };
-    document.addEventListener('mouseup', onMouseUp);
-    return () => document.removeEventListener('mouseup', onMouseUp);
-  }, []);
+export function ReaderScreen({ bookTitle, onBack, darkMode, src }: ReaderScreenProps) {
+  const [showTOC, setShowTOC] = useState(false);
+  const [toc, setToc] = useState<any[]>([]);
+  const [selection, setSelection] = useState<{ cfiRange: string; text?: string } | null>(null);
+  const [selectedAnnotation, setSelectedAnnotation] = useState<Annotation | undefined>(undefined);
+  const [tempMark, setTempMark] = useState<Annotation | null>(null);
+  const [showAnnoModal, setShowAnnoModal] = useState(false);
+  const [noteText, setNoteText] = useState('');
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [summaryText, setSummaryText] = useState('');
+  const [showAskAIModal, setShowAskAIModal] = useState(false);
+  const [askAIQuestion, setAskAIQuestion] = useState('');
 
   const colors = {
     background: darkMode ? '#000000' : '#FFFFFF',
@@ -72,84 +34,224 @@ export function ReaderScreen({ bookTitle, onBack, darkMode }: ReaderScreenProps)
     accent: darkMode ? '#06B6D4' : '#3B82F6',
   };
 
+  const { width, height } = useWindowDimensions();
+  const initWidthRef = useRef(width);
+  const initHeightRef = useRef(height);
+  const insets = useSafeAreaInsets();
+  const { goToLocation, getMeta, addAnnotation, removeAnnotation, annotations } = useReader();
+
+  useEffect(() => {
+    const m = getMeta?.();
+    if (m && (m as any).toc) setToc((m as any).toc as any[]);
+  }, [getMeta]);
+
+  
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={[styles.topBar, { backgroundColor: colors.barBackground, borderBottomColor: colors.border }]}> 
         <TouchableOpacity onPress={onBack} style={styles.topButton}><Feather name="arrow-left" size={20} color={colors.barText} /></TouchableOpacity>
         <Text numberOfLines={1} style={[styles.title, { color: colors.barText }]}>{bookTitle}</Text>
-        <TouchableOpacity onPress={() => setShowMenu(!showMenu)} style={styles.topButton}><Feather name="more-vertical" size={20} color={colors.barText} /></TouchableOpacity>
+        <TouchableOpacity disabled={!toc.length} onPress={() => setShowTOC(true)} style={styles.topButton}><Feather name="list" size={20} color={colors.barText} /></TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.reading}>
-        <Text style={[styles.chapterTitle, { color: colors.barText }]}>Chapter 3: The Journey Begins</Text>
-        <View style={{ rowGap: 16 }}>
-          <Text style={{ color: colors.contentText, lineHeight: 22, userSelect: 'text' as any }}>
-            The morning sun cast long shadows across the valley as Emma stood at the edge of the cliff, contemplating the path ahead. She had spent years preparing for this moment, studying ancient texts and learning from the wisest scholars in the realm. Yet nothing could truly prepare her for what lay beyond the mountains.
-          </Text>
-          <Text style={{ color: colors.contentText, lineHeight: 22, userSelect: 'text' as any }}>
-            The old map in her satchel promised treasures and knowledge beyond imagination, but it also warned of dangers that had claimed the lives of countless adventurers before her. She traced her finger along the worn parchment, following the route marked by her mentor's hand.
-          </Text>
-          <Text style={{ color: colors.contentText, lineHeight: 22, userSelect: 'text' as any }}>
-            "The greatest discoveries often require the greatest risks," her mentor had told her on that final evening before her departure. Those words echoed in her mind now, giving her the courage to take the first step down the treacherous mountain path.
-          </Text>
-          <Text style={{ color: colors.contentText, lineHeight: 22, userSelect: 'text' as any }}>
-            As she descended, the landscape transformed around her. The familiar evergreen forests gave way to strange, twisted trees with silver bark that seemed to shimmer in the light. Birds with iridescent feathers sang melodies she had never heard before, and the very air felt charged with an ancient magic that made her skin tingle.
-          </Text>
-          <Text style={{ color: colors.contentText, lineHeight: 22, userSelect: 'text' as any }}>
-            By midday, Emma reached a clearing where a crystal-clear stream bubbled over smooth stones. She knelt beside it to refill her water flask, and as she did, she noticed something peculiar—the water seemed to flow in two directions at once, defying the natural laws she had studied so carefully.
-          </Text>
-          <Text style={{ color: colors.contentText, lineHeight: 22, userSelect: 'text' as any }}>
-            This was it, she realized. This was the threshold between the known world and the realm of mysteries. Everything beyond this point would challenge everything she thought she understood about reality itself. With a deep breath and a determined smile, Emma crossed the stream and continued her journey into the unknown.
-          </Text>
+      {!src && (
+        <View style={[styles.reading, { paddingTop: insets.top, paddingBottom: insets.bottom, paddingLeft: insets.left, paddingRight: insets.right }]}> 
+          <Text style={[styles.chapterTitle, { color: colors.barText }]}>No book loaded</Text>
         </View>
-
-        <View style={styles.readActions}>
-          <TouchableOpacity onPress={handleAddNote} style={[styles.actionButton, { backgroundColor: colors.accent }]}>
-            <Text style={styles.actionButtonText}>Add Note</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleSummarize} style={[styles.actionButton, { backgroundColor: colors.accent }]}>
-            <Text style={styles.actionButtonText}>Summarize</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-
-      <View style={[styles.progressBar, { backgroundColor: colors.barBackground, borderTopColor: colors.border }]}> 
-        <View style={styles.progressHeader}>
-          <Text style={[styles.progressLabel, { color: darkMode ? '#9CA3AF' : '#6B7280' }]}>Page {currentPage} of {totalPages}</Text>
-          <Text style={[styles.progressLabel, { color: darkMode ? '#9CA3AF' : '#6B7280' }]}>Chapter 3 – {Math.round(progress)}%</Text>
-        </View>
-        <View style={[styles.progressTrack, { backgroundColor: darkMode ? '#1F2937' : '#E5E7EB' }]}> 
-          <View style={[styles.progressFill, { width: `${progress}%`, backgroundColor: colors.accent }]} />
-        </View>
-      </View>
-
-      {selectedText && (
-        <FloatingToolbar
-          onHighlight={handleHighlight}
-          onAddNote={handleAddNote}
-          onSummarize={handleSummarize}
-          onAskAI={() => {}}
-          darkMode={darkMode}
-          anchor={anchor}
-        />
       )}
 
-      <BottomReaderToolbar darkMode={darkMode} />
+      {src && (
+        <View style={{ flex: 1, paddingTop: insets.top, paddingBottom: insets.bottom, paddingLeft: insets.left, paddingRight: insets.right }}>
+          <Reader
+            src={src}
+            fileSystem={useFileSystem}
+            width={initWidthRef.current}
+            height={initHeightRef.current * 0.8}
+            enableSelection
+            initialAnnotations={[]}
+            onAddAnnotation={(annotation) => {
+              if (annotation?.type === 'highlight' && (annotation as any)?.data?.isTemp) {
+                setTempMark(annotation);
+              }
+            }}
+            onPressAnnotation={(annotation) => {
+              setSelectedAnnotation(annotation);
+              setShowAnnoModal(true);
+            }}
+            onChangeAnnotations={() => {}}
+            menuItems={[
+              {
+                label: '✍️ Highlight',
+                action: (cfiRange: string, text?: string) => {
+                  addAnnotation?.('highlight', cfiRange, undefined, { color: '#3B82F6' });
+                  return true;
+                },
+              },
+              {
+                label: '📝 Note',
+                action: (cfiRange: string, text?: string) => {
+                  setSelection({ cfiRange, text });
+                  addAnnotation?.('highlight', cfiRange, { isTemp: true });
+                  setShowAnnoModal(true);
+                  return true;
+                },
+              },
+              {
+                label: '⚡️ Summarize',
+                action: (cfiRange: string, text?: string) => {
+                  const t = String(text || '').trim();
+                  const sentences = t.split(/([。.?!]|\.(\s|$))/).map(s => s.trim()).filter(Boolean);
+                  const summary = sentences.slice(0, 2).join(' ');
+                  setSelection({ cfiRange, text: t });
+                  setSummaryText(summary || t);
+                  setShowSummaryModal(true);
+                  return true;
+                },
+              },
+              {
+                label: '💬 Ask AI',
+                action: (cfiRange: string, text?: string) => {
+                  setSelection({ cfiRange, text });
+                  setAskAIQuestion('');
+                  setShowAskAIModal(true);
+                  return true;
+                },
+              },
+              {
+                label: '🟡',
+                action: (cfiRange: string) => {
+                  addAnnotation?.('highlight', cfiRange, undefined, { color: '#FACC15' });
+                  return true;
+                },
+              },
+              {
+                label: '🔴',
+                action: (cfiRange: string) => {
+                  addAnnotation?.('highlight', cfiRange, undefined, { color: '#EF4444' });
+                  return true;
+                },
+              },
+              {
+                label: '🟢',
+                action: (cfiRange: string) => {
+                  addAnnotation?.('highlight', cfiRange, undefined, { color: '#22C55E' });
+                  return true;
+                },
+              },
+              {
+                label: 'Add Note',
+                action: (cfiRange: string, text?: string) => {
+                  setSelection({ cfiRange, text });
+                  addAnnotation?.('highlight', cfiRange, { isTemp: true });
+                  setShowAnnoModal(true);
+                  return true;
+                },
+              },
+            ]}
+          />
+       
+        </View>
+      )}
 
-      {showSummaryPopup && (
-        <AISummaryPopup
-          selectedText={selectedText || ''}
-          onClose={() => setShowSummaryPopup(false)}
-          darkMode={darkMode}
-        />
-      )}
-      {showNotePopup && (
-        <AddNotePopup
-          onClose={() => setShowNotePopup(false)}
-          onSave={() => setShowNotePopup(false)}
-          darkMode={darkMode}
-        />
-      )}
+      <Modal visible={showTOC && toc.length > 0} transparent animationType="fade" onRequestClose={() => setShowTOC(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end' }}>
+          <View style={{ maxHeight: '60%', borderTopLeftRadius: 16, borderTopRightRadius: 16, backgroundColor: colors.barBackground, padding: 16 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={{ color: colors.barText, fontWeight: '700' }}>Table of Contents</Text>
+              <TouchableOpacity onPress={() => setShowTOC(false)}><Feather name="x" size={18} color={colors.barText} /></TouchableOpacity>
+            </View>
+            <ScrollView style={{ marginTop: 12 }}>
+              {toc.map((section: any, idx) => (
+                <TouchableOpacity key={idx} onPress={() => { const href = section?.href || section?.url || section?.id; if (href) { goToLocation?.(href); setShowTOC(false); } }} style={{ paddingVertical: 10 }}>
+                  <Text style={{ color: colors.barText }}>{String(section?.label || section?.title || section?.href || section?.id)}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showSummaryModal} transparent animationType="fade" onRequestClose={() => { setShowSummaryModal(false); setSelection(null); setSummaryText(''); }}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end' }}>
+          <View style={{ maxHeight: '60%', borderTopLeftRadius: 16, borderTopRightRadius: 16, backgroundColor: colors.barBackground, padding: 16 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={{ color: colors.barText, fontWeight: '700' }}>Summarize</Text>
+              <TouchableOpacity onPress={() => { setShowSummaryModal(false); setSelection(null); setSummaryText(''); }}><Feather name="x" size={18} color={colors.barText} /></TouchableOpacity>
+            </View>
+            <ScrollView style={{ marginTop: 12 }}>
+              <Text style={{ color: colors.barText }}>{summaryText}</Text>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showAskAIModal} transparent animationType="fade" onRequestClose={() => { setShowAskAIModal(false); setSelection(null); setAskAIQuestion(''); }}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end' }}>
+          <View style={{ maxHeight: '60%', borderTopLeftRadius: 16, borderTopRightRadius: 16, backgroundColor: colors.barBackground, padding: 16 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={{ color: colors.barText, fontWeight: '700' }}>Ask AI</Text>
+              <TouchableOpacity onPress={() => { setShowAskAIModal(false); setSelection(null); setAskAIQuestion(''); }}><Feather name="x" size={18} color={colors.barText} /></TouchableOpacity>
+            </View>
+            {selection && (
+              <View style={{ marginTop: 12 }}>
+                <Text style={{ color: colors.barText, marginBottom: 8 }}>Selected</Text>
+                <ScrollView style={{ maxHeight: 120 }}>
+                  <Text style={{ color: colors.barText }}>{String(selection.text || '')}</Text>
+                </ScrollView>
+                <Text style={{ color: colors.barText, marginTop: 12, marginBottom: 8 }}>Your question</Text>
+                <TextInput value={askAIQuestion} onChangeText={setAskAIQuestion} placeholder="Type your question" placeholderTextColor={darkMode ? '#6B7280' : '#9CA3AF'} style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, color: colors.barText }} />
+                <View style={{ flexDirection: 'row', columnGap: 8, marginTop: 8 }}>
+                  <TouchableOpacity onPress={() => { setShowAskAIModal(false); setSelection(null); setAskAIQuestion(''); }} style={[styles.topButton, { backgroundColor: colors.barBackground, borderWidth: 1, borderColor: colors.border }]}>
+                    <Text style={{ color: colors.barText }}>Send</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => { setShowAskAIModal(false); setSelection(null); setAskAIQuestion(''); }} style={[styles.topButton, { backgroundColor: colors.barBackground, borderWidth: 1, borderColor: colors.border }]}>
+                    <Text style={{ color: colors.barText }}>Close</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showAnnoModal} transparent animationType="fade" onRequestClose={() => { setShowAnnoModal(false); setSelection(null); setSelectedAnnotation(undefined); if (tempMark) { removeAnnotation?.(tempMark); setTempMark(null); } }}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end' }}>
+          <View style={{ maxHeight: '60%', borderTopLeftRadius: 16, borderTopRightRadius: 16, backgroundColor: colors.barBackground, padding: 16 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={{ color: colors.barText, fontWeight: '700' }}>Annotations</Text>
+              <TouchableOpacity onPress={() => { setShowAnnoModal(false); setSelection(null); setSelectedAnnotation(undefined); if (tempMark) { removeAnnotation?.(tempMark); setTempMark(null); } }}><Feather name="x" size={18} color={colors.barText} /></TouchableOpacity>
+            </View>
+            {selection && (
+              <View style={{ marginTop: 12 }}>
+                <Text style={{ color: colors.barText, marginBottom: 8 }}>Add Note</Text>
+                <TextInput value={noteText} onChangeText={setNoteText} placeholder="Enter note" placeholderTextColor={darkMode ? '#6B7280' : '#9CA3AF'} style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, color: colors.barText }} />
+                <View style={{ flexDirection: 'row', columnGap: 8, marginTop: 8 }}>
+                  <TouchableOpacity onPress={() => { if (selection?.cfiRange) { addAnnotation?.('note', selection.cfiRange, { note: noteText }); } if (tempMark) { removeAnnotation?.(tempMark); setTempMark(null); } setSelection(null); setNoteText(''); setShowAnnoModal(false); }} style={[styles.topButton, { backgroundColor: colors.barBackground, borderWidth: 1, borderColor: colors.border }]}>
+                    <Text style={{ color: colors.barText }}>Save</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => { setSelection(null); setNoteText(''); if (tempMark) { removeAnnotation?.(tempMark); setTempMark(null); } setShowAnnoModal(false); }} style={[styles.topButton, { backgroundColor: colors.barBackground, borderWidth: 1, borderColor: colors.border }]}>
+                    <Text style={{ color: colors.barText }}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+            <ScrollView style={{ marginTop: 12 }}>
+              {Array.isArray(annotations) && (annotations as any[]).map((a, idx) => (
+                <View key={idx} style={{ paddingVertical: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <TouchableOpacity onPress={() => setSelectedAnnotation(a)} style={{ flex: 1 }}>
+                    <Text style={{ color: colors.barText }}>{String((a as any)?.cfiRangeText || (a as any)?.text || (a as any)?.cfiRange || '')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => removeAnnotation?.(a)}>
+                    <Text style={{ color: darkMode ? '#FCA5A5' : '#DC2626' }}>Remove</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+      
     </View>
   );
 }
@@ -160,12 +262,4 @@ const styles = StyleSheet.create({
   title: { flex: 1, textAlign: 'center', fontSize: 16, fontWeight: '700' },
   reading: { paddingHorizontal: 24, paddingVertical: 24, rowGap: 16 },
   chapterTitle: { fontSize: 18, fontWeight: '700', marginBottom: 12 },
-  readActions: { flexDirection: 'row', columnGap: 12, marginTop: 24 },
-  actionButton: { flex: 1, borderRadius: 12, alignItems: 'center', paddingVertical: 12 },
-  actionButtonText: { color: '#FFFFFF', fontWeight: '600' },
-  progressBar: { borderTopWidth: 1, paddingHorizontal: 24, paddingVertical: 12 },
-  progressHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  progressLabel: { fontSize: 12 },
-  progressTrack: { height: 4, borderRadius: 999, overflow: 'hidden' },
-  progressFill: { height: '100%' },
 });

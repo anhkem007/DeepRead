@@ -10,8 +10,18 @@ import { BottomTabBar } from './components/BottomTabBar';
 import { ReaderScreen } from './components/ReaderScreen';
 import { AndroidFilePicker } from './components/AndroidFilePicker';
 
-// Mock data for books
-const initialBooks = [
+type Book = {
+  id: string;
+  title: string;
+  author: string;
+  cover: string;
+  progress: number;
+  format: 'PDF' | 'ePub' | 'TXT';
+  src?: string;
+  lastCfi?: string;
+};
+
+const initialBooks: Book[] = [
   {
     id: '1',
     title: 'The Great Gatsby',
@@ -115,8 +125,8 @@ function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [activeTab, setActiveTab] = useState<'home' | 'explore' | 'isbn' | 'settings'>('home');
   const [darkMode, setDarkMode] = useState(false);
-  const [currentBook, setCurrentBook] = useState<typeof initialBooks[0] | null>(null);
-  const [books, setBooks] = useState(initialBooks);
+  const [currentBook, setCurrentBook] = useState<Book | null>(null);
+  const [books, setBooks] = useState<Book[]>(initialBooks);
   const [pickerVisible, setPickerVisible] = useState(false);
 
   const handleAddBook = async () => {
@@ -130,16 +140,24 @@ function App() {
             const file = input.files?.[0];
             if (!file) { resolve(); return; }
             const ext = (file.name.split('.').pop() || '').toLowerCase();
-            const newBook = {
-              id: String(Date.now()),
-              title: file.name.replace(/\.[^.]+$/, ''),
-              author: 'Unknown',
-              cover: 'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?q=80&w=1080&fit=crop',
-              progress: 0,
-              format: (ext || 'file').toUpperCase() as 'PDF' | 'ePub' | 'TXT',
+            const fmt: Book['format'] = ext === 'pdf' ? 'PDF' : ext === 'epub' ? 'ePub' : 'TXT';
+            const reader = new FileReader();
+            reader.onload = () => {
+              const dataUri = typeof reader.result === 'string' ? reader.result : undefined;
+              const base64 = dataUri?.includes(',') ? dataUri.split(',')[1] : undefined;
+              const newBook: Book = {
+                id: String(Date.now()),
+                title: file.name.replace(/\.[^.]+$/, ''),
+                author: 'Unknown',
+                cover: 'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?q=80&w=1080&fit=crop',
+                progress: 0,
+                format: fmt,
+                src: base64,
+              };
+              setBooks((prev) => [newBook, ...prev]);
+              resolve();
             };
-            setBooks((prev) => [newBook, ...prev]);
-            resolve();
+            reader.readAsDataURL(file);
           };
           input.click();
         });
@@ -168,6 +186,7 @@ function App() {
             bookTitle={currentBook.title}
             onBack={() => setCurrentBook(null)}
             darkMode={darkMode}
+            src={currentBook.format === 'ePub' ? currentBook.src : undefined}
           />
         </View>
       </SafeAreaProvider>
@@ -212,13 +231,17 @@ function App() {
             onClose={() => setPickerVisible(false)}
             onPicked={(file) => {
               const ext = (file.name?.split('.').pop() || '').toLowerCase();
-              const newBook = {
+              const fmt: Book['format'] = ext === 'pdf' ? 'PDF' : ext === 'epub' ? 'ePub' : 'TXT';
+              const dataUri = (file as any).dataUri as string | undefined;
+              const base64 = dataUri?.includes(',') ? dataUri.split(',')[1] : undefined;
+              const newBook: Book = {
                 id: String(Date.now()),
-                title: file.name.replace(/\.[^.]+$/, ''),
+                title: (file.name || 'Unknown').replace(/\.[^.]+$/, ''),
                 author: 'Unknown',
                 cover: 'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?q=80&w=1080&fit=crop',
                 progress: 0,
-                format: (ext || 'file').toUpperCase() as 'PDF' | 'ePub' | 'TXT',
+                format: fmt,
+                src: base64,
               };
               setBooks((prev) => [newBook, ...prev]);
             }}

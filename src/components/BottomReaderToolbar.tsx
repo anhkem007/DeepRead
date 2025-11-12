@@ -5,9 +5,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface BottomReaderToolbarProps {
   darkMode: boolean;
+  onOpenTOC?: () => void;
+  onOpenNotes?: () => void;
+  onOpenAI?: () => void;
+  onOpenSettings?: () => void;
 }
 
-export function BottomReaderToolbar({ darkMode }: BottomReaderToolbarProps) {
+export function BottomReaderToolbar({ darkMode, onOpenTOC, onOpenNotes, onOpenAI, onOpenSettings }: BottomReaderToolbarProps) {
   const [activeItem, setActiveItem] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
 
@@ -18,8 +22,12 @@ export function BottomReaderToolbar({ darkMode }: BottomReaderToolbarProps) {
     { id: 'settings', label: 'Settings', icon: 'settings' as const },
   ];
 
-  const handleClick = (id: string, action: string) => {
+  const handleClick = (id: string) => {
     setActiveItem(id);
+    if (id === 'toc') onOpenTOC && onOpenTOC();
+    if (id === 'notes') onOpenNotes && onOpenNotes();
+    if (id === 'ai') onOpenAI && onOpenAI();
+    if (id === 'settings') onOpenSettings && onOpenSettings();
   };
 
   const colors = {
@@ -35,7 +43,7 @@ export function BottomReaderToolbar({ darkMode }: BottomReaderToolbarProps) {
         {tools.map((tool) => {
           const isActive = activeItem === tool.id;
           return (
-            <TouchableOpacity key={tool.id} onPress={() => handleClick(tool.id, tool.label)} style={styles.item}>
+            <TouchableOpacity key={tool.id} onPress={() => handleClick(tool.id)} style={styles.item}>
               <Feather name={tool.icon} size={20} color={isActive ? colors.active : colors.inactive} />
               <Text style={[styles.label, { color: isActive ? colors.active : colors.inactive }]}>{tool.label}</Text>
             </TouchableOpacity>
