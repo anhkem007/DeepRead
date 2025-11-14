@@ -1,4 +1,5 @@
 import { View, Text, TouchableOpacity, StyleSheet, FlatList } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Feather from 'react-native-vector-icons/Feather';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 
@@ -8,7 +9,7 @@ interface Book {
   author: string;
   cover: string;
   progress: number;
-  format: 'PDF' | 'ePub';
+  format: 'PDF' | 'ePub' | 'TXT';
 }
 
 interface HomeTabProps {
@@ -34,14 +35,16 @@ export function HomeTab({ books, onAddBook, onReadBook, darkMode }: HomeTabProps
     buttonSecondaryText: darkMode ? '#D1D5DB' : '#374151',
   };
 
+  const insets = useSafeAreaInsets();
+
   const renderItem = ({ item }: { item: Book }) => (
-    <View style={[styles.card, { backgroundColor: colors.cardBackground }]}> 
+    <TouchableOpacity onPress={() => onReadBook(item)} activeOpacity={0.8} style={[styles.card, { backgroundColor: colors.cardBackground }]}> 
       <View style={styles.cover}>
         <ImageWithFallback src={item.cover} alt={item.title} style={styles.coverImage} />
         <View style={styles.badge}><Text style={styles.badgeText}>{item.format}</Text></View>
       </View>
       <View style={styles.cardBody}>
-        <Text numberOfLines={2} style={[styles.cardTitle, { color: colors.cardTitle }]}>{item.title}</Text>
+        <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.cardTitle, { color: colors.cardTitle }]}>{item.title}</Text>
         <Text style={[styles.cardSub, { color: colors.cardSub }]}>{item.author}</Text>
         <View style={styles.progressBlock}>
           <View style={styles.progressHeader}>
@@ -53,20 +56,20 @@ export function HomeTab({ books, onAddBook, onReadBook, darkMode }: HomeTabProps
           </View>
         </View>
         <View style={styles.actionsRow}>
-          <TouchableOpacity onPress={() => onReadBook(item)} style={[styles.button, { backgroundColor: colors.buttonPrimaryBg }]}> 
-            <Text style={[styles.buttonText, { color: colors.buttonPrimaryText }]}>Read</Text>
-          </TouchableOpacity>
           <TouchableOpacity style={[styles.button, { backgroundColor: colors.buttonSecondaryBg }]}> 
             <Text style={[styles.buttonText, { color: colors.buttonSecondaryText }]}>Summarize</Text>
           </TouchableOpacity>
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
+  const bottomPadding = insets.bottom + 96;
+  const listBottomPadding = insets.bottom + 120;
+
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}> 
-      <View style={[styles.header, { backgroundColor: colors.headerBackground }]}> 
+    <View style={[styles.container, { backgroundColor: colors.background, paddingBottom: bottomPadding }]}> 
+      <View style={[styles.header, { backgroundColor: colors.headerBackground, paddingTop: insets.top }]}> 
         <Text style={[styles.headerTitle, { color: colors.headerText }]}>Your Library 📚</Text>
       </View>
       {books.length === 0 ? (
@@ -76,14 +79,14 @@ export function HomeTab({ books, onAddBook, onReadBook, darkMode }: HomeTabProps
         </View>
       ) : (
         <FlatList
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: listBottomPadding }]}
           data={books}
           keyExtractor={(b) => b.id}
           renderItem={renderItem}
           numColumns={2}
         />
       )}
-      <TouchableOpacity onPress={onAddBook} style={styles.fab}> 
+      <TouchableOpacity onPress={onAddBook} style={[styles.fab, { bottom: insets.bottom + 96 }]}> 
         <Feather name="plus" size={24} color="#FFFFFF" />
       </TouchableOpacity>
     </View>
@@ -91,7 +94,7 @@ export function HomeTab({ books, onAddBook, onReadBook, darkMode }: HomeTabProps
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingBottom: 96 },
+  container: { flex: 1 },
   header: { paddingHorizontal: 24, paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
   headerTitle: { fontSize: 18, fontWeight: '700' },
   list: { paddingHorizontal: 16, paddingVertical: 16, rowGap: 16 },
@@ -114,6 +117,6 @@ const styles = StyleSheet.create({
   emptyState: { alignItems: 'center', justifyContent: 'center', paddingVertical: 80 },
   emptyText: { fontSize: 16, marginBottom: 8 },
   emptySubText: { fontSize: 12 },
-  fab: { position: 'absolute', bottom: 96, right: 24, width: 56, height: 56, borderRadius: 28, backgroundColor: '#3B82F6', alignItems: 'center', justifyContent: 'center', elevation: 8 },
+  fab: { position: 'absolute', right: 24, width: 56, height: 56, borderRadius: 28, backgroundColor: '#3B82F6', alignItems: 'center', justifyContent: 'center', elevation: 8 },
   fabText: { color: '#FFFFFF', fontSize: 24, fontWeight: '700' },
 });

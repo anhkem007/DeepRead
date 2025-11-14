@@ -1,4 +1,5 @@
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Feather from 'react-native-vector-icons/Feather';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 
@@ -32,10 +33,13 @@ export function ExploreTab({ trendingBooks, recommendedBooks, darkMode }: Explor
     secondaryBg: darkMode ? '#374151' : '#E5E7EB',
     secondaryText: darkMode ? '#D1D5DB' : '#374151',
   };
+  const insets = useSafeAreaInsets();
+
+  const bottomPadding = insets.bottom + 96;
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}> 
-      <View style={[styles.header, { backgroundColor: colors.headerBackground }]}> 
+    <View style={[styles.container, { backgroundColor: colors.background, paddingBottom: bottomPadding }]}> 
+      <View style={[styles.header, { backgroundColor: colors.headerBackground, paddingTop: insets.top }]}> 
         <Text style={[styles.headerTitle, { color: colors.headerText }]}>Discover Great Books 🌟</Text>
         <View style={[styles.searchRow, { backgroundColor: colors.inputBackground }]}> 
           <Feather name="search" size={18} color={colors.inputPlaceholder} style={{ marginRight: 8 }} />
@@ -46,7 +50,7 @@ export function ExploreTab({ trendingBooks, recommendedBooks, darkMode }: Explor
           />
         </View>
       </View>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 120 }]}>
         <View style={[styles.highlightCard, { backgroundColor: colors.primary }]}> 
           <View style={styles.highlightRow}>
             <View style={styles.highlightCover}>
@@ -57,7 +61,7 @@ export function ExploreTab({ trendingBooks, recommendedBooks, darkMode }: Explor
                 <Feather name="book-open" size={14} color="#1E293B" />
                 <Text style={styles.highlightBadgeText}>Today's Highlight</Text>
               </View>
-              <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700', marginBottom: 4 }}>{trendingBooks[0]?.title}</Text>
+              <Text numberOfLines={1} ellipsizeMode="tail" style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700', marginBottom: 4 }}>{trendingBooks[0]?.title}</Text>
               <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, marginBottom: 12 }}>{trendingBooks[0]?.author}</Text>
               <TouchableOpacity style={styles.whiteButton}><Text style={{ color: colors.primary, fontWeight: '600' }}>Read Summary</Text></TouchableOpacity>
             </View>
@@ -76,7 +80,7 @@ export function ExploreTab({ trendingBooks, recommendedBooks, darkMode }: Explor
                   <ImageWithFallback src={book.cover} alt={book.title} style={{ width: '100%', height: '100%' }} />
                 </View>
                 <View style={{ padding: 8 }}>
-                  <Text numberOfLines={2} style={{ fontSize: 12, fontWeight: '700', color: colors.cardTitle, marginBottom: 4 }}>{book.title}</Text>
+                  <Text numberOfLines={1} ellipsizeMode="tail" style={{ fontSize: 12, fontWeight: '700', color: colors.cardTitle, marginBottom: 4 }}>{book.title}</Text>
                   <Text style={{ fontSize: 12, color: colors.cardSub }}>{book.author}</Text>
                 </View>
               </View>
@@ -95,7 +99,7 @@ export function ExploreTab({ trendingBooks, recommendedBooks, darkMode }: Explor
                 <View style={styles.recoRow}>
                   <View style={styles.recoCover}><ImageWithFallback src={book.cover} alt={book.title} style={{ width: '100%', height: '100%' }} /></View>
                   <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={{ fontSize: 14, fontWeight: '700', color: colors.cardTitle, marginBottom: 4 }}>{book.title}</Text>
+                    <Text numberOfLines={1} ellipsizeMode="tail" style={{ fontSize: 14, fontWeight: '700', color: colors.cardTitle, marginBottom: 4 }}>{book.title}</Text>
                     <Text style={{ fontSize: 12, color: colors.cardSub, marginBottom: 8 }}>{book.author}</Text>
                     <Text numberOfLines={3} style={{ fontSize: 12, color: darkMode ? '#D1D5DB' : '#4B5563', marginBottom: 12 }}>{book.summary}</Text>
                     <View style={{ flexDirection: 'row', columnGap: 8 }}>

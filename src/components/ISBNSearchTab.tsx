@@ -1,15 +1,7 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Feather from 'react-native-vector-icons/Feather';
-import { ImageWithFallback } from './figma/ImageWithFallback';
-
-interface BookResult {
-  title: string;
-  author: string;
-  year: string;
-  cover: string;
-  description: string;
-}
 
 interface ISBNSearchTabProps {
   darkMode: boolean;
@@ -17,17 +9,7 @@ interface ISBNSearchTabProps {
 
 export function ISBNSearchTab({ darkMode }: ISBNSearchTabProps) {
   const [isbn, setIsbn] = useState('');
-  const [result, setResult] = useState<BookResult | null>(null);
-
-  const handleSearch = () => {
-    setResult({
-      title: 'The Art of Computer Programming',
-      author: 'Donald E. Knuth',
-      year: '1968',
-      cover: 'https://images.unsplash.com/photo-1725870475677-7dc91efe9f93?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzY2llbmNlJTIwYm9vayUyMGNvdmVyfGVufDF8fHx8MTc2Mjc3MzE3NXww&ixlib=rb-4.1.0&q=80&w=1080',
-      description: 'A comprehensive monograph written by Donald Knuth that covers many kinds of programming algorithms and their analysis. Knuth began the project, originally conceived as a single book with twelve chapters, in 1962.'
-    });
-  };
+  const insets = useSafeAreaInsets();
 
   const colors = {
     background: darkMode ? '#111827' : '#F9FAFB',
@@ -40,89 +22,67 @@ export function ISBNSearchTab({ darkMode }: ISBNSearchTabProps) {
     cardTitle: darkMode ? '#FFFFFF' : '#111827',
     cardSub: darkMode ? '#9CA3AF' : '#6B7280',
     primary: '#3B82F6',
-    secondaryBg: darkMode ? '#374151' : '#E5E7EB',
-    secondaryText: darkMode ? '#D1D5DB' : '#374151',
+  };
+
+  const bottomPadding = insets.bottom + 96;
+
+  const handleSearch = () => {
+    // TODO: Implement ISBN search
+    console.log('Searching for ISBN:', isbn);
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}> 
-      <View style={[styles.header, { backgroundColor: colors.headerBackground }]}> 
-        <Text style={[styles.headerTitle, { color: colors.headerText }]}>Find Book by ISBN 🔍</Text>
+    <View style={[styles.container, { backgroundColor: colors.background, paddingBottom: bottomPadding }]}>
+      <View style={[styles.header, { backgroundColor: colors.headerBackground, paddingTop: insets.top }]}>
+        <Text style={[styles.headerTitle, { color: colors.headerText }]}>Search by ISBN 🔍</Text>
       </View>
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={{ rowGap: 16 }}>
-          <View>
-            <Text style={{ fontSize: 12, marginBottom: 8, color: colors.cardSub }}>ISBN Number</Text>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 120 }]}>
+        <View style={[styles.searchCard, { backgroundColor: colors.cardBackground }]}>
+          <Text style={[styles.label, { color: colors.cardSub }]}>Enter ISBN</Text>
+          <View style={[styles.inputContainer, { backgroundColor: colors.inputBackground }]}>
+            <Feather name="search" size={20} color={colors.inputPlaceholder} style={{ marginRight: 12 }} />
             <TextInput
               value={isbn}
               onChangeText={setIsbn}
-              placeholder="Enter ISBN (e.g., 978-0-201-03801-3)"
+              placeholder="e.g., 978-0-123456-78-9"
               placeholderTextColor={colors.inputPlaceholder}
-              style={[styles.input, { backgroundColor: colors.inputBackground, color: colors.inputText }]}
+              style={[styles.input, { color: colors.inputText }]}
+              keyboardType="numeric"
             />
           </View>
-          <View style={{ flexDirection: 'row', columnGap: 12 }}>
-            <TouchableOpacity onPress={handleSearch} style={[styles.primaryButton, { backgroundColor: colors.primary }]}> 
-              <Feather name="search" size={16} color="#FFFFFF" />
-              <Text style={[styles.primaryButtonText, { marginLeft: 6 }]}>Search</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.secondaryButton, { backgroundColor: colors.secondaryBg }]}> 
-              <Feather name="camera" size={16} color={colors.secondaryText} />
-              <Text style={{ color: colors.secondaryText, marginLeft: 6 }}>Scan</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            onPress={handleSearch}
+            style={[styles.searchButton, { backgroundColor: colors.primary }]}
+          >
+            <Text style={styles.searchButtonText}>Search</Text>
+          </TouchableOpacity>
         </View>
 
-        {result && (
-          <View style={[styles.resultCard, { backgroundColor: colors.cardBackground }]}> 
-            <View style={{ aspectRatio: 16/9, backgroundColor: '#E5E7EB' }}>
-              <ImageWithFallback src={result.cover} alt={result.title} style={{ width: '100%', height: '100%' }} />
-            </View>
-            <View style={{ padding: 16 }}>
-              <View style={{ flexDirection: 'row', columnGap: 12, marginBottom: 12 }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: colors.cardTitle, marginBottom: 4 }}>{result.title}</Text>
-                  <Text style={{ fontSize: 12, color: colors.cardSub, marginBottom: 4 }}>by {result.author}</Text>
-                  <Text style={{ fontSize: 12, color: colors.cardSub }}>Published: {result.year}</Text>
-                </View>
-              </View>
-              <View style={{ marginBottom: 16 }}>
-                <Text style={{ fontSize: 12, color: colors.cardSub, marginBottom: 8 }}>Description</Text>
-                <Text style={{ fontSize: 12, color: darkMode ? '#D1D5DB' : '#4B5563' }}>{result.description}</Text>
-              </View>
-              <View style={{ flexDirection: 'row', columnGap: 12 }}>
-                <TouchableOpacity style={[styles.primaryButton, { backgroundColor: colors.primary }]}> 
-                  <Feather name="plus" size={16} color="#FFFFFF" />
-                  <Text style={[styles.primaryButtonText, { marginLeft: 6 }]}>Add to Library</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.secondaryButton, { backgroundColor: colors.secondaryBg }]}> 
-                  <Feather name="zap" size={16} color={colors.secondaryText} />
-                  <Text style={{ color: colors.secondaryText, marginLeft: 6 }}>Summarize with AI</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {!result && (
-          <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 48 }}>
-            <Text style={{ color: colors.cardSub, marginBottom: 8 }}>Enter an ISBN to search</Text>
-            <Text style={{ color: colors.cardSub, fontSize: 12, textAlign: 'center', maxWidth: 320 }}>You can also scan a barcode using your camera</Text>
-          </View>
-        )}
+        <View style={[styles.infoCard, { backgroundColor: colors.cardBackground }]}>
+          <Feather name="info" size={20} color={colors.primary} style={{ marginBottom: 8 }} />
+          <Text style={[styles.infoTitle, { color: colors.cardTitle }]}>About ISBN Search</Text>
+          <Text style={[styles.infoText, { color: colors.cardSub }]}>
+            Enter a valid ISBN (International Standard Book Number) to search for book information.
+            You can find the ISBN on the back cover or copyright page of a book.
+          </Text>
+        </View>
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingBottom: 96 },
+  container: { flex: 1 },
   header: { paddingHorizontal: 24, paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
   headerTitle: { fontSize: 18, fontWeight: '700' },
-  content: { paddingHorizontal: 16, paddingVertical: 16, rowGap: 24 },
-  input: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 16 },
-  primaryButton: { flex: 1, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingVertical: 12 },
-  primaryButtonText: { color: '#FFFFFF', fontWeight: '600' },
-  secondaryButton: { paddingHorizontal: 16, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  resultCard: { borderRadius: 16, overflow: 'hidden' },
+  content: { paddingHorizontal: 16, paddingVertical: 24, rowGap: 16 },
+  searchCard: { borderRadius: 16, padding: 16, rowGap: 12 },
+  label: { fontSize: 14, fontWeight: '600', marginBottom: 4 },
+  inputContainer: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12 },
+  input: { flex: 1, fontSize: 16 },
+  searchButton: { borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 8 },
+  searchButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
+  infoCard: { borderRadius: 16, padding: 16, alignItems: 'center' },
+  infoTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8 },
+  infoText: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
 });

@@ -1,16 +1,30 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { UserSettings } from '../database/models/UserSettings';
 
 interface SettingsTabProps {
   darkMode: boolean;
   onToggleDarkMode: () => void;
+  settings?: UserSettings | null;
+  onUpdateSettings?: (updates: Partial<UserSettings>) => void;
 }
 
-export function SettingsTab({ darkMode, onToggleDarkMode }: SettingsTabProps) {
+export function SettingsTab({ darkMode, onToggleDarkMode, settings, onUpdateSettings }: SettingsTabProps) {
   const [apiKey, setApiKey] = useState('');
   const [fontSize, setFontSize] = useState(16);
   const [language, setLanguage] = useState<'english' | 'vietnamese'>('english');
   const [keyTested, setKeyTested] = useState(false);
+  const insets = useSafeAreaInsets();
+
+  // Sync with settings from database
+  useEffect(() => {
+    if (settings) {
+      setApiKey(settings.openai_api_key || '');
+      setFontSize(settings.font_size);
+      setLanguage(settings.language);
+    }
+  }, [settings]);
 
   const handleTestKey = () => {
     setKeyTested(true);
@@ -31,12 +45,14 @@ export function SettingsTab({ darkMode, onToggleDarkMode }: SettingsTabProps) {
     success: '#22C55E',
   };
 
+  const bottomPadding = insets.bottom + 96;
+
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}> 
-      <View style={[styles.header, { backgroundColor: colors.headerBackground }]}> 
+    <View style={[styles.container, { backgroundColor: colors.background, paddingBottom: bottomPadding }]}> 
+      <View style={[styles.header, { backgroundColor: colors.headerBackground, paddingTop: insets.top }]}> 
         <Text style={[styles.headerTitle, { color: colors.headerText }]}>Settings ⚙️</Text>
       </View>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 120 }]}>
         <View>
           <Text style={[styles.sectionTitle, { color: colors.cardTitle }]}>AI Settings</Text>
           <View style={[styles.card, { backgroundColor: colors.cardBackground }]}> 
@@ -49,8 +65,16 @@ export function SettingsTab({ darkMode, onToggleDarkMode }: SettingsTabProps) {
               secureTextEntry
               style={[styles.input, { backgroundColor: colors.inputBackground, color: colors.inputText }]}
             />
-            <TouchableOpacity onPress={handleTestKey} style={[styles.primaryButton, { backgroundColor: keyTested ? colors.success : colors.primary }]}> 
-              <Text style={styles.primaryButtonText}>{keyTested ? 'Key Verified' : 'Test Key'}</Text>
+            <TouchableOpacity 
+              onPress={() => {
+                handleTestKey();
+                if (onUpdateSettings && apiKey) {
+                  onUpdateSettings({ openai_api_key: apiKey });
+                }
+              }} 
+              style={[styles.primaryButton, { backgroundColor: keyTested ? colors.success : colors.primary }]}
+            > 
+              <Text style={styles.primaryButtonText}>{keyTested ? 'Key Verified' : 'Save Key'}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -63,8 +87,30 @@ export function SettingsTab({ darkMode, onToggleDarkMode }: SettingsTabProps) {
               <Text style={{ fontSize: 12, color: colors.cardSub }}>{fontSize}px</Text>
             </View>
             <View style={{ flexDirection: 'row', columnGap: 8, marginTop: 8 }}>
-              <TouchableOpacity onPress={() => setFontSize(Math.max(12, fontSize - 1))} style={[styles.secondaryButton, { backgroundColor: colors.inputBackground }]}><Text style={{ color: colors.inputText }}>A-</Text></TouchableOpacity>
-              <TouchableOpacity onPress={() => setFontSize(Math.min(24, fontSize + 1))} style={[styles.secondaryButton, { backgroundColor: colors.inputBackground }]}><Text style={{ color: colors.inputText }}>A+</Text></TouchableOpacity>
+              <TouchableOpacity 
+                onPress={() => {
+                  const newSize = Math.max(12, fontSize - 1);
+                  setFontSize(newSize);
+                  if (onUpdateSettings) {
+                    onUpdateSettings({ font_size: newSize });
+                  }
+                }} 
+                style={[styles.secondaryButton, { backgroundColor: colors.inputBackground }]}
+              >
+                <Text style={{ color: colors.inputText }}>A-</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={() => {
+                  const newSize = Math.min(24, fontSize + 1);
+                  setFontSize(newSize);
+                  if (onUpdateSettings) {
+                    onUpdateSettings({ font_size: newSize });
+                  }
+                }} 
+                style={[styles.secondaryButton, { backgroundColor: colors.inputBackground }]}
+              >
+                <Text style={{ color: colors.inputText }}>A+</Text>
+              </TouchableOpacity>
             </View>
             <Text style={{ fontSize: 12, color: colors.cardSub, marginTop: 8 }}>Theme</Text>
             <View style={{ flexDirection: 'row', columnGap: 8, marginTop: 8 }}>
@@ -78,8 +124,28 @@ export function SettingsTab({ darkMode, onToggleDarkMode }: SettingsTabProps) {
           <Text style={[styles.sectionTitle, { color: colors.cardTitle }]}>Language</Text>
           <View style={[styles.card, { backgroundColor: colors.cardBackground }]}> 
             <View style={{ flexDirection: 'row', columnGap: 8 }}>
-              <TouchableOpacity onPress={() => setLanguage('english')} style={[styles.secondaryButton, { backgroundColor: language === 'english' ? colors.primary : colors.inputBackground }]}><Text style={{ color: language === 'english' ? '#FFFFFF' : colors.inputText }}>English</Text></TouchableOpacity>
-              <TouchableOpacity onPress={() => setLanguage('vietnamese')} style={[styles.secondaryButton, { backgroundColor: language === 'vietnamese' ? colors.primary : colors.inputBackground }]}><Text style={{ color: language === 'vietnamese' ? '#FFFFFF' : colors.inputText }}>Tiếng Việt</Text></TouchableOpacity>
+              <TouchableOpacity 
+                onPress={() => {
+                  setLanguage('english');
+                  if (onUpdateSettings) {
+                    onUpdateSettings({ language: 'english' });
+                  }
+                }} 
+                style={[styles.secondaryButton, { backgroundColor: language === 'english' ? colors.primary : colors.inputBackground }]}
+              >
+                <Text style={{ color: language === 'english' ? '#FFFFFF' : colors.inputText }}>English</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={() => {
+                  setLanguage('vietnamese');
+                  if (onUpdateSettings) {
+                    onUpdateSettings({ language: 'vietnamese' });
+                  }
+                }} 
+                style={[styles.secondaryButton, { backgroundColor: language === 'vietnamese' ? colors.primary : colors.inputBackground }]}
+              >
+                <Text style={{ color: language === 'vietnamese' ? '#FFFFFF' : colors.inputText }}>Tiếng Việt</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
